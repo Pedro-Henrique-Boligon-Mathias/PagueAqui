@@ -22,6 +22,11 @@ type SessionConnections = {
   mobile?: ActiveConnection;
 };
 
+type RateLimitState = {
+  count: number;
+  resetAt: number;
+};
+
 export type RealtimeConnectionStore = {
   getSession(sessionId: string): SessionConnections | undefined;
   register(sessionId: string, connection: ActiveConnection): void;
@@ -66,6 +71,21 @@ function sendJson(socket: WebSocket, payload: unknown) {
 
 function sendError(socket: WebSocket, code: string, message: string) {
   sendJson(socket, RealtimeErrorMessageSchema.parse({ code, message, type: 'error' }));
+}
+
+function isRateLimited(state: RateLimitState, limit: number, windowMs: number, now = Date.now()) {
+  if (state.resetAt <= now) {
+    state.count = 1;
+    state.resetAt = now + windowMs;
+    return false;
+  }
+
+  if (state.count >= limit) {
+    return true;
+  }
+
+  state.count += 1;
+  return false;
 }
 
 function getErrorMessage(error: unknown) {
@@ -124,9 +144,14 @@ export function buildApp(store = createInMemoryConnectionStore()) {
       }
 
       const { role, sessionId } = parsedQuery.data;
+      const rateLimitState: RateLimitState = { count: 0, resetAt: Date.now() + 60_000 };
       store.register(sessionId, { role, socket });
 
       socket.on('message', (rawMessage) => {
+        if (isRateLimited(rateLimitState, 120, 60_000)) {
+          sendError(socket, 'rate_limited', 'Too many realtime messages.');
+          return;
+        }
         let parsedJson: unknown;
 
         try {

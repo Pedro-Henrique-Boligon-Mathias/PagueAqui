@@ -36,10 +36,12 @@ export type ScanSessionStatus = z.infer<typeof ScanSessionStatusSchema>;
 
 const ConnectionRoleSchema = z.enum(['desktop', 'mobile']);
 
-const BaseRealtimeMessageSchema = z.object({
-  messageId: z.string().min(1),
-  sessionId: z.string().min(1),
-});
+const BaseRealtimeMessageSchema = z
+  .object({
+    messageId: z.string().min(1),
+    sessionId: z.string().min(1),
+  })
+  .strict();
 
 export const DesktopConnectedMessageSchema = BaseRealtimeMessageSchema.extend({
   type: z.literal('desktop_connected'),
@@ -91,11 +93,13 @@ export const RealtimeMessageSchema = z.discriminatedUnion('type', [
   SessionExpiredMessageSchema,
 ]);
 
-export const RealtimeErrorMessageSchema = z.object({
-  type: z.literal('error'),
-  code: z.string().min(1),
-  message: z.string().min(1),
-});
+export const RealtimeErrorMessageSchema = z
+  .object({
+    type: z.literal('error'),
+    code: z.string().min(1),
+    message: z.string().min(1),
+  })
+  .strict();
 
 export const RealtimeConnectionQuerySchema = z.object({
   role: ConnectionRoleSchema,

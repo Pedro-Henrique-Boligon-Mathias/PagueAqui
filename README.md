@@ -82,3 +82,13 @@ Configure a protecao da branch `main` no GitHub em **Settings > Branches > Branc
 5. Ative **Require branches to be up to date before merging**.
 
 O template `.github/pull_request_template.md` exige checklist de validacao local em cada PR.
+
+
+## Segurança
+
+A camada inicial de seguranca inclui CSP, headers de hardening, rate limit nas rotas sensiveis,
+validacao estrita de mensagens realtime, logs em `security_events`, Dependabot, auditoria de
+dependencias, Semgrep e CodeQL no CI.
+
+Veja `SECURITY.md` para reporte de vulnerabilidades e `docs/owasp-top-10-checklist.md` para o
+checklist OWASP Top 10 do projeto.
