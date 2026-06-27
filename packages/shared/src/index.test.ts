@@ -9,9 +9,46 @@ import {
   ScanSessionStatusSchema,
   createHealthResponse,
   parseInvoiceQrPayload,
+  parseOriginAllowlist,
+  parseRealtimeEnvironment,
+  parseWebEnvironment,
 } from './index';
 
 describe('shared schemas', () => {
+
+
+  it('validates web environment variables', () => {
+    expect(
+      parseWebEnvironment({
+        NEXT_PUBLIC_REALTIME_WS_URL: 'wss://realtime.example.com/ws',
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+        NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+      }),
+    ).toMatchObject({ NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co' });
+  });
+
+  it('rejects invalid web websocket environment variables', () => {
+    expect(() => parseWebEnvironment({ NEXT_PUBLIC_REALTIME_WS_URL: 'https://example.com/ws' })).toThrow();
+  });
+
+  it('validates realtime environment variables', () => {
+    expect(parseRealtimeEnvironment({ PORT: '4444', REALTIME_ALLOWED_ORIGINS: 'https://app.example.com' })).toMatchObject({
+      HOST: '0.0.0.0',
+      PORT: 4444,
+    });
+  });
+
+  it('rejects invalid realtime ports', () => {
+    expect(() => parseRealtimeEnvironment({ PORT: '99999' })).toThrow();
+  });
+
+  it('parses origin allowlists', () => {
+    expect(parseOriginAllowlist('https://a.example.com/path, https://b.example.com')).toEqual([
+      'https://a.example.com',
+      'https://b.example.com',
+    ]);
+  });
+
   it('validates scan session statuses', () => {
     expect(ScanSessionStatusSchema.parse('pending_pairing')).toBe('pending_pairing');
   });

@@ -2,6 +2,54 @@ import { z } from 'zod';
 
 const UuidSchema = z.string().uuid();
 const TimestampSchema = z.string().datetime();
+const OptionalUrlSchema = z.string().trim().url().optional();
+const OptionalWsUrlSchema = z
+  .string()
+  .trim()
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'ws:' || url.protocol === 'wss:';
+    } catch {
+      return false;
+    }
+  }, 'Expected ws:// or wss:// URL.')
+  .optional();
+
+export const WebEnvironmentSchema = z.object({
+  NEXT_ALLOWED_DEV_ORIGINS: z.string().trim().optional(),
+  NEXT_PUBLIC_APP_URL: OptionalUrlSchema,
+  NEXT_PUBLIC_PAIRING_APP_URL: OptionalUrlSchema,
+  NEXT_PUBLIC_REALTIME_WS_URL: OptionalWsUrlSchema,
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().trim().min(1).optional(),
+  NEXT_PUBLIC_SUPABASE_URL: OptionalUrlSchema,
+});
+
+export const RealtimeEnvironmentSchema = z.object({
+  HOST: z.string().trim().min(1).default('0.0.0.0'),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3333),
+  REALTIME_ALLOWED_ORIGINS: z.string().trim().optional(),
+});
+
+export type WebEnvironment = z.infer<typeof WebEnvironmentSchema>;
+export type RealtimeEnvironment = z.infer<typeof RealtimeEnvironmentSchema>;
+
+export function parseWebEnvironment(env: Record<string, string | undefined>) {
+  return WebEnvironmentSchema.parse(env);
+}
+
+export function parseRealtimeEnvironment(env: Record<string, string | undefined>) {
+  return RealtimeEnvironmentSchema.parse(env);
+}
+
+export function parseOriginAllowlist(value?: string) {
+  return (value ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map((origin) => new URL(origin).origin);
+}
+
 const AccessKeySchema = z.string().regex(/^\d{44}$/);
 
 export const InvoiceQrParsedPayloadSchema = z.object({
