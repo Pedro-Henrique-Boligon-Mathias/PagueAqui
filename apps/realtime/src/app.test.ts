@@ -110,6 +110,62 @@ describe('realtime app', () => {
     mobile.close();
   });
 
+
+
+  it('rejects realtime messages with unexpected fields', async () => {
+    const desktop = await connect('desktop', 'extra-field');
+    const messagePromise = waitForMessage(desktop);
+
+    desktop.send(
+      JSON.stringify({
+        admin: true,
+        messageId: 'msg-extra',
+        sessionId: 'extra-field',
+        type: 'scan_requested',
+      }),
+    );
+
+    await expect(messagePromise).resolves.toMatchObject({
+      code: 'invalid_message',
+      type: 'error',
+    });
+
+    desktop.close();
+  });
+
+  it('rate limits excessive websocket messages', async () => {
+    const desktop = await connect('desktop', 'rate-limit');
+    const messages: unknown[] = [];
+    const rateLimitedPromise = new Promise<unknown>((resolve) => {
+      desktop.on('message', (data) => {
+        const message = JSON.parse(data.toString()) as { code?: string };
+        messages.push(message);
+
+        if (message.code === 'rate_limited') {
+          resolve(message);
+        }
+      });
+    });
+
+    for (let index = 0; index < 125; index += 1) {
+      desktop.send(
+        JSON.stringify({
+          messageId: `msg-${index}`,
+          sessionId: 'rate-limit',
+          type: 'scan_requested',
+        }),
+      );
+    }
+
+    await expect(rateLimitedPromise).resolves.toMatchObject({
+      code: 'rate_limited',
+      type: 'error',
+    });
+    expect(messages.length).toBeGreaterThan(0);
+
+    desktop.close();
+  });
+
   it('notifies when the target connection is offline', async () => {
     const desktop = await connect('desktop', 'target-offline');
     const messagePromise = waitForMessage(desktop);

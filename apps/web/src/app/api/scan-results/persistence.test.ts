@@ -72,6 +72,23 @@ describe('scan result persistence helpers', () => {
     ).toBe(false);
   });
 
+  it('rejects sessions for another device, including revoked-device attempts', () => {
+    expect(
+      isScanSessionReadyForInvoice(
+        {
+          expires_at: '2026-06-27T12:10:00.000Z',
+          id: 'session-1',
+          mobile_device_id: 'device-2',
+          status: 'scanning',
+          user_id: 'user-1',
+        },
+        'user-1',
+        'device-1',
+        new Date('2026-06-27T12:00:00.000Z'),
+      ),
+    ).toBe(false);
+  });
+
   it('rejects expired sessions', () => {
     expect(
       isScanSessionReadyForInvoice(

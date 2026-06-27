@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { checkRateLimit } from '../../../lib/rate-limit';
+import { getRequestIp, logSecurityEvent } from '../../../lib/security';
 import { createServerSupabaseClient } from '../../../lib/supabase/server';
 import {
   buildInvoiceInsert,
@@ -13,6 +15,13 @@ function jsonError(message: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  const rateLimitKey = `scan-results:${getRequestIp(request) ?? 'unknown'}`;
+  const rateLimit = checkRateLimit(rateLimitKey, 30, 60_000);
+
+  if (rateLimit.limited) {
+    return jsonError('Muitas tentativas. Aguarde um minuto e tente novamente.', 429);
+  }
+
   let body: unknown;
 
   try {
@@ -50,6 +59,7 @@ export async function POST(request: Request) {
   }
 
   if (!pairedDevice) {
+    await logSecurityEvent(supabase, request, 'scan_result_device_rejected', user.id, { deviceId });
     return jsonError('Celular nao pareado ou revogado.', 403);
   }
 
@@ -71,6 +81,11 @@ export async function POST(request: Request) {
       deviceId,
     )
   ) {
+    await logSecurityEvent(supabase, request, 'scan_result_session_rejected', user.id, {
+      deviceId,
+      sessionId,
+      sessionStatus: scanSession?.status ?? null,
+    });
     return jsonError('Sessao de leitura invalida ou expirada.', 409);
   }
 
@@ -79,6 +94,7 @@ export async function POST(request: Request) {
   try {
     invoiceInsert = buildInvoiceInsert(user.id, rawValue);
   } catch {
+    await logSecurityEvent(supabase, request, 'scan_result_payload_rejected', user.id, { deviceId, sessionId });
     return jsonError('QR Code invalido para NFC-e.', 400);
   }
 
@@ -94,6 +110,12 @@ export async function POST(request: Request) {
 
   await supabase.from('paired_devices').update({ last_seen_at: new Date().toISOString() }).eq('id', deviceId);
   await supabase.from('scan_sessions').update({ status: 'completed' }).eq('id', sessionId);
+  await logSecurityEvent(supabase, request, 'scan_result_saved', user.id, {
+    accessKey: invoiceInsert.access_key,
+    deviceId,
+    invoiceId: invoice.id,
+    sessionId,
+  });
 
   return NextResponse.json({
     invoiceId: invoice.id,
