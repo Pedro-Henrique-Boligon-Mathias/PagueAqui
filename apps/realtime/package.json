@@ -9,7 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "lint": "eslint . --max-warnings=0",
     "test": "corepack pnpm --filter @leitor-nfce/shared build && vitest run",
-    "test:e2e": "vitest run --passWithNoTests",
+    "test:e2e": "corepack pnpm --filter @leitor-nfce/shared build && vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

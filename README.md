@@ -83,6 +83,26 @@ Configure a protecao da branch `main` no GitHub em **Settings > Branches > Branc
 
 O template `.github/pull_request_template.md` exige checklist de validacao local em cada PR.
 
+### Validação Antes do Push
+
+Este repositório inclui um hook versionado em `.githooks/pre-push`. Para ativar no clone local:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Depois disso, todo `git push` roda automaticamente:
+
+```bash
+corepack pnpm validate
+```
+
+Se alguma etapa falhar, o push é bloqueado. Para rodar manualmente:
+
+```bash
+corepack pnpm validate
+```
+
 
 ## Segurança
 

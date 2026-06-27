@@ -12,7 +12,8 @@
     "lint": "corepack pnpm -r --if-present lint",
     "test": "corepack pnpm -r --if-present test",
     "test:e2e": "corepack pnpm -r --if-present test:e2e",
-    "typecheck": "corepack pnpm --filter @leitor-nfce/shared build && corepack pnpm -r --if-present typecheck"
+    "typecheck": "corepack pnpm --filter @leitor-nfce/shared build && corepack pnpm -r --if-present typecheck",
+    "validate": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test && corepack pnpm build && corepack pnpm test:e2e && corepack pnpm audit --audit-level=high"
   },
   "devDependencies": {
     "@leitor-nfce/config": "workspace:*",
