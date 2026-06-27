@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+printf "\n[pre-push] Rodando validacao local antes do push...\n"
+corepack pnpm validate
+printf "[pre-push] Validacao concluida. Enviando push.\n\n"
