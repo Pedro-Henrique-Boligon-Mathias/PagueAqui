@@ -5,15 +5,16 @@ import QRCode from 'qrcode';
 import { getSupabaseEnv } from '../../lib/env';
 import { getRealtimeWsUrl } from '../../lib/realtime';
 import { createServerSupabaseClient } from '../../lib/supabase/server';
-import { signOut } from './actions';
+import { addInvoiceItem, deleteInvoiceItem, extractInvoiceData, signOut, updateInvoice } from './actions';
 import {
+  getInvoiceDateInputValue,
   getInvoiceDisplayDate,
   getInvoiceDisplayTitle,
   getInvoiceDisplayTotal,
   getInvoiceStatus,
   type InvoiceListItem,
 } from './invoice-list';
-import { revokeDevice, startPairing } from './pairing-actions';
+import { renameDevice, requestDeviceScan, revokeDevice, startNewPairing, startPairing } from './pairing-actions';
 import { PairingPanel } from './pairing-panel';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +27,12 @@ type DashboardPageProps = {
     pairingUrl?: string;
     reuseDevice?: string;
     scanUrl?: string;
+    latestInvoice?: string;
   }>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const { pairingError, pairingMessage, pairingSession, pairingUrl, reuseDevice, scanUrl } =
+  const { latestInvoice, pairingError, pairingMessage, pairingSession, pairingUrl, reuseDevice, scanUrl } =
     await searchParams;
   const { isConfigured } = getSupabaseEnv();
 
@@ -94,6 +96,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .order('last_seen_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
 
+  const primaryDevice = pairedDevices?.[0] ?? null;
+
   const { data: latestActiveSession } = await supabase
     .from('scan_sessions')
     .select('id, status, created_at')
@@ -105,6 +109,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .maybeSingle();
 
   const activePairingSession = pairingSession ?? latestActiveSession?.id ?? null;
+  const scannerStatus = scanUrl
+    ? `Pedido enviado para ${reuseDevice ?? 'o celular pareado'}`
+    : activePairingSession
+      ? 'Aguardando leitura do celular'
+      : primaryDevice
+        ? `${primaryDevice.device_name} disponivel para nova leitura`
+        : 'Nenhum celular conectado ainda';
   const qrCodeDataUrl = pairingUrl
     ? await QRCode.toDataURL(pairingUrl, { errorCorrectionLevel: 'M', margin: 1, width: 240 })
     : null;
@@ -139,16 +150,28 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </article>
       </section>
 
-      <section className="empty-state" aria-labelledby="empty-title">
+      <section className="empty-state scanner-command" aria-labelledby="empty-title">
         <div>
-          <h2 id="empty-title">Escanear com celular</h2>
+          <p className="eyebrow">Status</p>
+          <h2 id="empty-title">{scannerStatus}</h2>
           <p className="muted">
-            Inicie um pareamento para conectar seu celular a este painel desktop.
+            {primaryDevice
+              ? 'Deixe /scan aberto no celular. O desktop pede a leitura e o celular libera a camera quando encontrar a sessao.'
+              : 'Conecte um celular uma unica vez. Depois disso, ele aparece aqui como leitor disponivel.'}
           </p>
         </div>
-        <form action={startPairing}>
-          <button type="submit">Escanear com celular</button>
-        </form>
+        <div className="button-row">
+          <form action={startPairing}>
+            <button type="submit">{primaryDevice ? `Escanear com ${primaryDevice.device_name}` : 'Conectar celular'}</button>
+          </form>
+          {primaryDevice ? (
+            <form action={startNewPairing}>
+              <button className="secondary" type="submit">
+                Conectar novo celular
+              </button>
+            </form>
+          ) : null}
+        </div>
 
         {pairingError ? <p className="notice">{pairingError}</p> : null}
         {pairingMessage ? <p className="notice success">{pairingMessage}</p> : null}
@@ -156,12 +179,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         {pairingSession && scanUrl ? (
           <div className="pairing-box">
             <div>
-              <h3>{reuseDevice ? `Usando ${reuseDevice}` : 'Celular pareado'}</h3>
+              <h3>{reuseDevice ? `Pedido enviado para ${reuseDevice}` : 'Celular pareado'}</h3>
               <p className="muted">
-                Se o celular nao abrir sozinho, abra este link no dispositivo pareado.
+                Se o celular estiver em /scan, ele encontra este pedido sozinho. Este link tambem abre a leitura direto.
               </p>
               <a className="text-link break-link" href={scanUrl}>
-                {scanUrl}
+                Abrir leitura neste dispositivo
               </a>
               <PairingPanel
                 pairingSessionId={pairingSession}
@@ -211,7 +234,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <section className="empty-state" aria-labelledby="invoices-title">
         <div>
           <h2 id="invoices-title">Notas salvas</h2>
-          <p className="muted">Ultimas NFC-e lidas pelo celular e persistidas no Supabase.</p>
+          <p className="muted">Ultimas NFC-e lidas pelo celular. A nota mais nova abre destacada quando chega.</p>
         </div>
 
         {invoicesError ? <p className="notice">Nao foi possivel carregar as notas: {invoicesError.message}</p> : null}
@@ -226,7 +249,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               }).format(new Date(getInvoiceDisplayDate(invoice)));
 
               return (
-                <details className="invoice-row" key={invoice.id}>
+                <details
+                  className={invoice.id === latestInvoice ? 'invoice-row highlighted' : 'invoice-row'}
+                  key={invoice.id}
+                  open={invoice.id === latestInvoice}
+                >
                   <summary>
                     <span>
                       <strong>{getInvoiceDisplayTitle(invoice)}</strong>
@@ -251,6 +278,47 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       </dd>
                     </div>
                   </dl>
+
+                  <form action={extractInvoiceData} className="inline-action-form">
+                    <input name="invoiceId" type="hidden" value={invoice.id} />
+                    <button type="submit">Extrair dados agora</button>
+                    <span className="muted">Busca total e itens pelo link publico da NFC-e.</span>
+                  </form>
+
+                  <form action={updateInvoice} className="invoice-form">
+                    <input name="invoiceId" type="hidden" value={invoice.id} />
+                    <label>
+                      Emitente
+                      <input
+                        name="issuerName"
+                        placeholder="Nome do mercado"
+                        type="text"
+                        defaultValue={invoice.issuer_name ?? ''}
+                      />
+                    </label>
+                    <label>
+                      Total
+                      <input
+                        inputMode="decimal"
+                        name="totalAmount"
+                        placeholder="0,00"
+                        type="text"
+                        defaultValue={invoice.total_amount ?? ''}
+                      />
+                    </label>
+                    <label>
+                      Data da compra
+                      <input
+                        name="purchasedAt"
+                        type="datetime-local"
+                        defaultValue={getInvoiceDateInputValue(invoice)}
+                      />
+                    </label>
+                    <button className="secondary" type="submit">
+                      Salvar dados
+                    </button>
+                  </form>
+
                   {items.length ? (
                     <div className="item-list">
                       {items.map((item) => (
@@ -258,12 +326,39 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                           <span>{item.name}</span>
                           <small>{item.quantity ?? '-'} x {item.unit_price ?? '-'}</small>
                           <strong>{item.total_price ?? '-'}</strong>
+                          <form action={deleteInvoiceItem}>
+                            <input name="itemId" type="hidden" value={item.id} />
+                            <button className="secondary danger" type="submit">
+                              Remover
+                            </button>
+                          </form>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="notice">Itens ainda nao extraidos. A estrutura ja esta pronta para a etapa de extracao.</p>
+                    <p className="notice">Itens ainda nao extraidos. Cadastre manualmente enquanto a extracao automatica nao entra.</p>
                   )}
+
+                  <form action={addInvoiceItem} className="item-form">
+                    <input name="invoiceId" type="hidden" value={invoice.id} />
+                    <label>
+                      Item
+                      <input name="name" placeholder="Produto ou servico" required type="text" />
+                    </label>
+                    <label>
+                      Qtd.
+                      <input inputMode="decimal" name="quantity" placeholder="1" type="text" />
+                    </label>
+                    <label>
+                      Unitario
+                      <input inputMode="decimal" name="unitPrice" placeholder="0,00" type="text" />
+                    </label>
+                    <label>
+                      Total
+                      <input inputMode="decimal" name="totalPrice" placeholder="0,00" type="text" />
+                    </label>
+                    <button type="submit">Adicionar item</button>
+                  </form>
                 </details>
               );
             })}
@@ -271,21 +366,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         ) : null}
 
         {!invoicesError && !invoices?.length ? (
-          <p className="notice">Nenhuma nota salva ainda. Escaneie uma NFC-e pelo celular para ela aparecer aqui.</p>
+          <div className="notice empty-guide">
+            <strong>Nenhuma nota salva ainda.</strong>
+            <span>Conecte um celular, clique em escanear e aponte para o QR Code da NFC-e.</span>
+          </div>
         ) : null}
       </section>
 
       <section className="empty-state" aria-labelledby="devices-title">
         <div>
           <h2 id="devices-title">Celulares pareados</h2>
-          <p className="muted">Revogue um celular para impedir que ele seja reutilizado em novas leituras.</p>
+          <p className="muted">Escolha qual celular vai ler a proxima nota, renomeie ou revogue acessos antigos.</p>
         </div>
 
         {pairedDevices?.length ? (
           <div className="device-list">
             {pairedDevices.map((device) => (
               <article className="device-row" key={device.id}>
-                <div>
+                <div className="device-info">
                   <strong>{device.device_name}</strong>
                   <p className="muted">
                     Ultimo uso:{' '}
@@ -297,17 +395,33 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       : 'ainda nao registrado'}
                   </p>
                 </div>
-                <form action={revokeDevice}>
+                <form action={renameDevice} className="rename-form">
                   <input name="deviceId" type="hidden" value={device.id} />
+                  <input aria-label="Nome do dispositivo" name="deviceName" defaultValue={device.device_name} />
                   <button className="secondary" type="submit">
-                    Revogar
+                    Renomear
                   </button>
                 </form>
+                <div className="device-actions">
+                  <form action={requestDeviceScan}>
+                    <input name="deviceId" type="hidden" value={device.id} />
+                    <button type="submit">Escanear</button>
+                  </form>
+                  <form action={revokeDevice}>
+                    <input name="deviceId" type="hidden" value={device.id} />
+                    <button className="secondary danger" type="submit">
+                      Revogar
+                    </button>
+                  </form>
+                </div>
               </article>
             ))}
           </div>
         ) : (
-          <p className="notice">Nenhum celular pareado ainda.</p>
+          <div className="notice empty-guide">
+            <strong>Nenhum celular pareado ainda.</strong>
+            <span>Use Conectar celular para liberar o primeiro leitor.</span>
+          </div>
         )}
       </section>
     </main>

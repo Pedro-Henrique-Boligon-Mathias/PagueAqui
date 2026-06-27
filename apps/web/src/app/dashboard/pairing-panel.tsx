@@ -89,6 +89,16 @@ export function PairingPanel({ pairingSessionId, realtimeUrl, requestScanOnOpen 
         setInvoiceId(data.invoiceId ?? null);
         setScanPayload(data.payload);
         setScanError(null);
+
+        if (data.invoiceId) {
+          router.replace(
+            `/dashboard?latestInvoice=${encodeURIComponent(data.invoiceId)}&pairingMessage=${encodeURIComponent(
+              'Nota recebida com sucesso.',
+            )}`,
+          );
+          return;
+        }
+
         router.refresh();
       }
 
@@ -146,12 +156,12 @@ export function PairingPanel({ pairingSessionId, realtimeUrl, requestScanOnOpen 
   }
 
   if (state === 'confirmed') {
-    return <p className="notice success">Celular pareado. Aguardando leitura da nota...</p>;
+    return <p className="notice success">Celular conectado. Aguardando a leitura da nota...</p>;
   }
 
   if (state === 'offline') {
     return <p className="notice">Realtime offline. O pareamento ainda sera salvo no banco.</p>;
   }
 
-  return <p className="notice">Aguardando confirmacao do celular...</p>;
+  return <p className="notice">Aguardando celular abrir /scan...</p>;
 }
