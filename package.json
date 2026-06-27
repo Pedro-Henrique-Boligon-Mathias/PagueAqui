@@ -1,0 +1,29 @@
+{
+  "name": "leitor-nfce",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "build": "corepack pnpm -r --sort --if-present build",
+    "dev": "corepack pnpm --parallel --filter @leitor-nfce/web --filter @leitor-nfce/realtime dev",
+    "dev:realtime": "corepack pnpm --filter @leitor-nfce/realtime dev",
+    "dev:web": "corepack pnpm --filter @leitor-nfce/web dev",
+    "format": "prettier --write .",
+    "lint": "corepack pnpm -r --if-present lint",
+    "test": "corepack pnpm -r --if-present test",
+    "test:e2e": "corepack pnpm -r --if-present test:e2e",
+    "typecheck": "corepack pnpm --filter @leitor-nfce/shared build && corepack pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "@leitor-nfce/config": "workspace:*",
+    "@eslint/js": "^9.30.0",
+    "@next/eslint-plugin-next": "^15.3.4",
+    "@types/node": "^24.0.7",
+    "eslint": "^9.30.0",
+    "eslint-config-prettier": "^10.1.5",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.0",
+    "vitest": "^3.2.4"
+  }
+}

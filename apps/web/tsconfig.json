@@ -1,0 +1,12 @@
+{
+  "extends": "@leitor-nfce/config/tsconfig/base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "incremental": false,
+    "jsx": "preserve",
+    "plugins": [{ "name": "next" }],
+    "types": ["vitest"]
+  },
+  "include": ["next-env.d.ts", "next.config.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

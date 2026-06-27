@@ -1,0 +1,28 @@
+{
+  "name": "@leitor-nfce/realtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/index.ts",
+    "lint": "eslint . --max-warnings=0",
+    "test": "corepack pnpm --filter @leitor-nfce/shared build && vitest run",
+    "test:e2e": "vitest run --passWithNoTests",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/websocket": "^11.2.0",
+    "@leitor-nfce/shared": "workspace:*",
+    "fastify": "^5.4.0",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@leitor-nfce/config": "workspace:*",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.20.3",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

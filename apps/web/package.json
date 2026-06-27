@@ -1,0 +1,35 @@
+{
+  "name": "@leitor-nfce/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "WATCHPACK_POLLING=true WATCHPACK_POLLING_INTERVAL=1000 next dev",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "test:e2e": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@leitor-nfce/shared": "workspace:*",
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.2",
+    "next": "^15.3.4",
+    "qr-scanner": "^1.4.2",
+    "qrcode": "^1.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "catalog:",
+    "@leitor-nfce/config": "workspace:*",
+    "@next/eslint-plugin-next": "catalog:",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "eslint-config-next": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

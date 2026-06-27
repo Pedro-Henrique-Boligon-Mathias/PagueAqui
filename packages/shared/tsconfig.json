@@ -1,0 +1,8 @@
+{
+  "extends": "@leitor-nfce/config/tsconfig/base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "types": ["node", "vitest"]
+  },
+  "include": ["src/**/*.ts"]
+}
