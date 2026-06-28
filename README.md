@@ -112,3 +112,11 @@ dependencias, Semgrep e CodeQL no CI.
 
 Veja `SECURITY.md` para reporte de vulnerabilidades e `docs/owasp-top-10-checklist.md` para o
 checklist OWASP Top 10 do projeto.
+
+
+## Deploy e Produção
+
+- Variáveis de ambiente por app ficam em `apps/web/.env.example` e `apps/realtime/.env.example`.
+- O realtime possui `apps/realtime/Dockerfile` para deploy containerizado.
+- O Supabase possui `supabase/seed.sql` seguro para ambiente de desenvolvimento.
+- Veja `docs/deploy.md` para passos de deploy e `docs/production-checklist.md` para checklist antes de produção.

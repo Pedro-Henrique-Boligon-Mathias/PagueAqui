@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getInvoiceDateInputValue,
   getInvoiceDisplayDate,
   getInvoiceDisplayTitle,
   getInvoiceDisplayTotal,
@@ -40,5 +41,12 @@ describe('invoice list helpers', () => {
 
   it('marks partially extracted invoices as basic data', () => {
     expect(getInvoiceStatus(invoice)).toBe('Dados basicos salvos');
+  });
+
+  it('formats purchase date for datetime-local inputs', () => {
+    expect(getInvoiceDateInputValue({ ...invoice, purchased_at: '2026-06-27T18:30:00.000Z' })).toMatch(
+      /^2026-06-27T\d{2}:30$/,
+    );
+    expect(getInvoiceDateInputValue(invoice)).toBe('');
   });
 });

@@ -1,6 +1,6 @@
 'use server';
 
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { hashText, hashToken } from '../../lib/crypto';
@@ -111,6 +111,15 @@ export async function confirmPairing(formData: FormData) {
   if (updateError) {
     redirect(`/pair?token=${encodeURIComponent(token)}&message=${encodeURIComponent(updateError.message)}`);
   }
+
+  const cookieStore = await cookies();
+  cookieStore.set('leitor_nfce_device_id', device.id, {
+    httpOnly: true,
+    maxAge: 60 * 60 * 24 * 180,
+    path: '/',
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
 
   await notifyRealtime('mobile', {
     messageId: crypto.randomUUID(),

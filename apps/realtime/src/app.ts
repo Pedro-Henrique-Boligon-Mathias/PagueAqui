@@ -9,6 +9,7 @@ import {
   RealtimeMessageSchema,
   createHealthResponse,
   type ConnectionRole,
+  parseOriginAllowlist,
   type RealtimeMessage,
 } from '@leitor-nfce/shared';
 
@@ -25,6 +26,10 @@ type SessionConnections = {
 type RateLimitState = {
   count: number;
   resetAt: number;
+};
+
+type RealtimeAppOptions = {
+  allowedOrigins?: string[];
 };
 
 export type RealtimeConnectionStore = {
@@ -59,6 +64,22 @@ export function createInMemoryConnectionStore(): RealtimeConnectionStore {
       }
     },
   };
+}
+
+export function getAllowedOriginsFromEnv(value?: string) {
+  return parseOriginAllowlist(value);
+}
+
+export function isOriginAllowed(origin: string | undefined, allowedOrigins: string[] = []) {
+  if (!origin || allowedOrigins.length === 0) {
+    return true;
+  }
+
+  try {
+    return allowedOrigins.includes(new URL(origin).origin);
+  } catch {
+    return false;
+  }
 }
 
 function sendJson(socket: WebSocket, payload: unknown) {
@@ -116,7 +137,7 @@ function getTargetRole(message: RealtimeMessage, senderRole: ConnectionRole): Co
   return senderRole === 'desktop' ? 'mobile' : 'desktop';
 }
 
-export function buildApp(store = createInMemoryConnectionStore()) {
+export function buildApp(store = createInMemoryConnectionStore(), options: RealtimeAppOptions = {}) {
   const app = Fastify({ logger: false });
 
   app.setErrorHandler((error, _request, reply) => {
@@ -135,6 +156,12 @@ export function buildApp(store = createInMemoryConnectionStore()) {
 
   app.register(async (realtimeApp) => {
     realtimeApp.get('/ws', { websocket: true }, (socket, request) => {
+      if (!isOriginAllowed(request.headers.origin, options.allowedOrigins)) {
+        sendError(socket, 'origin_not_allowed', 'Realtime origin is not allowed.');
+        socket.close(1008, 'origin_not_allowed');
+        return;
+      }
+
       const parsedQuery = RealtimeConnectionQuerySchema.safeParse(request.query);
 
       if (!parsedQuery.success) {

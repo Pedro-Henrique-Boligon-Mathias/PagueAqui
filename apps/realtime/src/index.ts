@@ -1,7 +1,10 @@
-import { buildApp } from './app.js';
+import { parseRealtimeEnvironment } from '@leitor-nfce/shared';
 
-const app = buildApp();
-const port = Number(process.env.PORT ?? 3333);
-const host = process.env.HOST ?? '0.0.0.0';
+import { buildApp, getAllowedOriginsFromEnv } from './app.js';
 
-await app.listen({ host, port });
+const env = parseRealtimeEnvironment(process.env);
+const app = buildApp(undefined, {
+  allowedOrigins: getAllowedOriginsFromEnv(env.REALTIME_ALLOWED_ORIGINS),
+});
+
+await app.listen({ host: env.HOST, port: env.PORT });

@@ -27,3 +27,18 @@ export function createDeviceScanUrl(baseUrl: string, sessionId: string, deviceId
   scanUrl.searchParams.set('device', deviceId);
   return scanUrl.toString();
 }
+
+
+export function normalizeDeviceName(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const name = value.trim().replace(/\s+/g, ' ');
+
+  if (!name) {
+    return null;
+  }
+
+  return name.slice(0, 60);
+}

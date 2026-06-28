@@ -42,6 +42,11 @@ async function saveScanResult(sessionId: string, deviceId: string, rawValue: str
   });
 
   const data = (await response.json()) as {
+    enrichment?: {
+      error?: string | null;
+      itemCount?: number;
+      status?: string;
+    };
     error?: string;
     invoiceId?: string;
     payload?: ReturnType<typeof parseInvoiceQrPayload>;
@@ -52,6 +57,7 @@ async function saveScanResult(sessionId: string, deviceId: string, rawValue: str
   }
 
   return {
+    enrichment: data.enrichment ?? { itemCount: 0, status: 'not_available' },
     invoiceId: data.invoiceId,
     payload: data.payload,
   };
@@ -194,7 +200,11 @@ export function ScanQrReader({ deviceId, realtimeUrl, sessionId }: ScanQrReaderP
             type: 'scan_result',
           }),
         );
-        setMessage('Nota salva e enviada para o desktop.');
+        setMessage(
+          savedScan.enrichment.status === 'completed'
+            ? `Nota salva com ${savedScan.enrichment.itemCount ?? 0} item(ns) extraido(s).`
+            : 'Nota salva, mas os itens nao foram extraidos automaticamente.',
+        );
       },
       {
         highlightScanRegion: true,
@@ -216,8 +226,25 @@ export function ScanQrReader({ deviceId, realtimeUrl, sessionId }: ScanQrReaderP
     }
   }
 
-  function retry() {
+  function runPrimaryAction() {
+    if (state === 'success') {
+      window.location.href = '/scan';
+      return;
+    }
+
     void startScanner();
+  }
+
+  function getPrimaryActionLabel() {
+    if (state === 'idle') {
+      return 'Escanear QR Code';
+    }
+
+    if (state === 'success') {
+      return 'Aguardar nova leitura';
+    }
+
+    return 'Tentar novamente';
   }
 
   return (
@@ -239,8 +266,8 @@ export function ScanQrReader({ deviceId, realtimeUrl, sessionId }: ScanQrReaderP
       </p>
       {lastValue ? <p className="scan-result">{lastValue}</p> : null}
       <div className="button-row">
-        <button type="button" onClick={state === 'idle' ? startScanner : retry}>
-          {state === 'idle' ? 'Iniciar camera' : 'Tentar novamente'}
+        <button type="button" onClick={runPrimaryAction}>
+          {getPrimaryActionLabel()}
         </button>
         {state === 'reading' || state === 'starting' ? (
           <button

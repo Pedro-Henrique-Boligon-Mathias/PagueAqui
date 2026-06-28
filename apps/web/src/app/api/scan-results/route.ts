@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { checkRateLimit } from '../../../lib/rate-limit';
 import { getRequestIp, logSecurityEvent } from '../../../lib/security';
 import { createServerSupabaseClient } from '../../../lib/supabase/server';
+import { applyInvoiceEnrichment, fetchInvoiceEnrichmentDetailed } from './enrichment';
 import {
   buildInvoiceInsert,
   isScanSessionReadyForInvoice,
@@ -108,16 +109,60 @@ export async function POST(request: Request) {
     return jsonError(invoiceError.message, 500);
   }
 
+  const fetchResult = await fetchInvoiceEnrichmentDetailed(invoiceInsert.qr_url);
+  const enrichmentResult = await applyInvoiceEnrichment(
+    supabase,
+    {
+      id: invoice.id,
+      rawPayload: invoiceInsert.raw_payload,
+      userId: user.id,
+    },
+    fetchResult.enrichment,
+  );
+
+  if (enrichmentResult.status === 'invoice_update_failed') {
+    console.error('NFC-e enrichment invoice update failed', {
+      error: enrichmentResult.error,
+      invoiceId: invoice.id,
+    });
+  }
+
+  if (enrichmentResult.status === 'items_insert_failed') {
+    console.error('NFC-e enrichment items insert failed', {
+      error: enrichmentResult.error,
+      invoiceId: invoice.id,
+      itemCount: enrichmentResult.itemCount,
+    });
+  }
+
+  console.info('NFC-e enrichment finished', {
+    invoiceId: invoice.id,
+    itemCount: enrichmentResult.itemCount,
+    status: enrichmentResult.status,
+    reason: fetchResult.reason,
+    reasonMessage: fetchResult.message,
+    totalAmount: fetchResult.enrichment?.totalAmount ?? null,
+  });
+
+
   await supabase.from('paired_devices').update({ last_seen_at: new Date().toISOString() }).eq('id', deviceId);
   await supabase.from('scan_sessions').update({ status: 'completed' }).eq('id', sessionId);
   await logSecurityEvent(supabase, request, 'scan_result_saved', user.id, {
     accessKey: invoiceInsert.access_key,
     deviceId,
+    enrichmentError: enrichmentResult.error,
+    enrichmentStatus: enrichmentResult.status,
     invoiceId: invoice.id,
+    itemCount: enrichmentResult.itemCount,
     sessionId,
   });
 
   return NextResponse.json({
+    enrichment: {
+      error: enrichmentResult.error,
+      itemCount: enrichmentResult.itemCount,
+      status: enrichmentResult.status,
+    },
     invoiceId: invoice.id,
     payload: invoiceInsert.raw_payload,
   });

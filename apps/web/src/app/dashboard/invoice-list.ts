@@ -36,3 +36,20 @@ export function getInvoiceDisplayTitle(invoice: InvoiceListItem) {
 export function getInvoiceStatus(invoice: InvoiceListItem) {
   return invoice.total_amount === null || invoice.issuer_name === null ? 'Dados basicos salvos' : 'Completa';
 }
+
+export function getInvoiceDateInputValue(invoice: InvoiceListItem) {
+  const value = invoice.purchased_at;
+
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}

@@ -3,7 +3,7 @@ import { WebSocket } from 'ws';
 
 import { parseInvoiceQrPayload } from '@leitor-nfce/shared';
 
-import { buildApp } from './app.js';
+import { buildApp, isOriginAllowed } from './app.js';
 
 const app = buildApp();
 
@@ -24,6 +24,16 @@ describe('realtime app', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+
+
+  it('allows configured websocket origins', () => {
+    expect(isOriginAllowed('https://app.example.com', ['https://app.example.com'])).toBe(true);
+  });
+
+  it('blocks unconfigured websocket origins', () => {
+    expect(isOriginAllowed('https://evil.example.com', ['https://app.example.com'])).toBe(false);
   });
 
   it('responds to the healthcheck', async () => {
