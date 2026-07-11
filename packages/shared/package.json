@@ -19,8 +19,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.2",
-    "zod": "^3.25.67"
+    "@supabase/supabase-js": "^2.110.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@leitor-nfce/config": "workspace:*",
