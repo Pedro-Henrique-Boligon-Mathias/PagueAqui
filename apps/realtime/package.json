@@ -13,10 +13,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@fastify/websocket": "^11.2.0",
+    "@fastify/websocket": "^11.3.0",
     "@leitor-nfce/shared": "workspace:*",
-    "fastify": "^5.4.0",
-    "ws": "^8.21.0"
+    "fastify": "^5.10.0",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
     "@leitor-nfce/config": "workspace:*",
